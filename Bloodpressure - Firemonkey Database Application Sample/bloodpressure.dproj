@@ -336,6 +336,8 @@
             <DesignClass>TDataModule</DesignClass>
         </DCCReference>
         <DCCReference Include="controller_main.pas"/>
+        <DCCReference Include="component_database.pas"/>
+        <DCCReference Include="component_singlefiledatabase.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>

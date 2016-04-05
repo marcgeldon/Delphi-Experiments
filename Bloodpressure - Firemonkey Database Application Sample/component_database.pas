@@ -1,16 +1,9 @@
 {*******************************************************************************
   Blood pressure Database - Small Firemonkey Database Application Example
-  Version 0.2
   use it in Embarcadero Delphi 10 Seattle Update 1
 
   Author: Marc Geldon, Ludwigshafen, Germany
   https://github.com/marcgeldon/delphi_experiments
-
-  The idea behind this example is to create a small database application,
-  developed in Delphi, based on Firemonkey.
-
-  To use it as a base to discuss database application development in the
-  Delphi community.
 
   The above author notice and this permission notice shall be included in all
   copies or substantial portions of the Software.
@@ -22,25 +15,26 @@
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
   IN THE SOFTWARE.
+
+  all database controllers are derived from this component
+
+  future ideas:
+
+  - there can be more than just a "single file database controller". ideas are:
+  controllers for client-server-databases etc. etc.
+
+  - functions used in all database controller classes will be transfered to
+  this component.
 *******************************************************************************}
-program bloodpressure;
+unit component_database;
 
-uses
-  System.StartUpCopy,
-  FMX.Forms,
-  view_main in 'view_main.pas' {frmMain},
-  model_main in 'model_main.pas' {dmMain: TDataModule},
-  controller_main in 'controller_main.pas',
-  component_database in 'component_database.pas',
-  component_singlefiledatabase in 'component_singlefiledatabase.pas';
+interface
+uses System.Classes;
 
-{$R *.res}
+type
+  TMGDatabaseController = class(TComponent)
+  end;
 
-begin
-  System.ReportMemoryLeaksOnShutdown := True;
+implementation
 
-  Application.Title := 'Blood pressure Database Application';
-  Application.Initialize;
-  Application.CreateForm(TfrmMain, frmMain);
-  Application.Run;
 end.

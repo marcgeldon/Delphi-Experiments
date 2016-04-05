@@ -24,7 +24,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.IOUtils, System.DateUtils,
-  System.Variants, Data.DB, Datasnap.DBClient;
+  System.Variants, Data.DB, Datasnap.DBClient, component_singlefiledatabase;
 
 type
   TdmMain = class(TDataModule)
@@ -37,20 +37,10 @@ type
     CDSBloodpressureID: TAutoIncField;
     procedure DataModuleCreate(Sender: TObject);
     procedure CDSBloodpressureAfterInsert(DataSet: TDataSet);
-  const
-    DefaultDatabasePathname = 'Blood pressure';
-    DefaultDatabaseFilename = 'database.bloodpressure';
   private
-    FOpenDatabaseFilename: String;
-    FDefaultDatabasePath: String;
+    FDBController: TMGSingleFileDatabaseController;
   public
-    procedure NewDatabase;
-    procedure LoadDatabaseFromFile(Filename: String = '');
-    procedure SaveDatabaseToFile(Filename: String = '');
-    procedure EnsureDefaultDatabasePathExists;
-    procedure EnsureDataIsPosted;
-
-    property OpenDatabaseFilename: String read FOpenDatabaseFilename;
+    property DBController: TMGSingleFileDatabaseController read FDBController;
   end;
 
 var
@@ -69,77 +59,17 @@ end;
 
 procedure TdmMain.DataModuleCreate(Sender: TObject);
 begin
-  NewDatabase;
-
-  FDefaultDatabasePath :=  System.IOUtils.TPath.GetDocumentsPath +
-                    System.IOUtils.TPath.DirectorySeparatorChar +
-                    DefaultDatabasePathname +
-                    System.IOUtils.TPath.DirectorySeparatorChar;
-
-  EnsureDefaultDatabasePathExists;
+  FDBController := TMGSingleFileDatabaseController.Create(Self);
+  FDBController.ApplicationTitle := 'Blood pressure';
+  FDBController.DatabaseFileExtension := '.bloodpressure';
+  FDBController.UpdateDatabaseFileFilter;
+  FDBController.DefaultDatabaseFilename := 'default' + FDBController.DatabaseFileExtension;
+  FDBController.DataSet := CDSBloodpressure;
+  FDBController.NewDatabase;
 
   // if there is already a default database, we load it
-  if FileExists(FDefaultDatabasePath + DefaultDatabaseFilename) then
-    LoadDatabaseFromFile();
-end;
-
-procedure TdmMain.EnsureDataIsPosted;
-begin
-  if (CDSBloodpressure.State in [TDataSetState.dsEdit, TDataSetState.dsInsert]) then
-    CDSBloodpressure.Post;
-end;
-
-procedure TdmMain.EnsureDefaultDatabasePathExists;
-begin
-  // if the default database path does not exist, we create it (in the user document directory)
-  if not DirectoryExists(FDefaultDatabasePath) then
-    ForceDirectories(FDefaultDatabasePath);
-end;
-
-procedure TdmMain.LoadDatabaseFromFile(Filename: String);
-begin
-  if (Filename = '') then
-    Filename := DefaultDatabaseFilename;
-
-  if (System.SysUtils.ExtractFilePath(Filename) = '') then
-    Filename := FDefaultDatabasePath + Filename;
-
-  CDSBloodpressure.LoadFromFile(Filename);
-  FOpenDatabaseFilename := Filename;
-
-  // we call MergeChangeLog, so that the DataSet ChangeCount is set to 0
-  CDSBloodpressure.MergeChangeLog;
-end;
-
-procedure TdmMain.NewDatabase;
-begin
-  CDSBloodpressure.Close;
-
-  // create the dataset (field + index definitions are set in the component properties)
-  CDSBloodpressure.CreateDataSet;
-  CDSBloodpressure.Open;
-
-  FOpenDatabaseFilename := '';
-end;
-
-procedure TdmMain.SaveDatabaseToFile(Filename: String);
-begin
-  if (Filename = '') then
-    if (FOpenDatabaseFilename <> '') then
-      Filename := FOpenDatabaseFilename
-    else
-      Filename := DefaultDatabaseFilename;
-
-  if (System.SysUtils.ExtractFilePath(Filename) = '') then
-  begin
-    EnsureDefaultDatabasePathExists;
-    Filename := FDefaultDatabasePath + Filename;
-  end;
-
-  CDSBloodpressure.MergeChangeLog;
-  CDSBloodpressure.SaveToFile(Filename, TDataPacketFormat.dfXMLUTF8);
-
-  FOpenDatabaseFilename := Filename;
+  if FileExists(FDBController.DatabasePath + FDBController.DefaultDatabaseFilename) then
+    FDBController.LoadDatabaseFromFile(FDBController.DatabasePath + FDBController.DefaultDatabaseFilename);
 end;
 
 end.

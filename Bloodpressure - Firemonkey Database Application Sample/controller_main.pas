@@ -26,11 +26,9 @@ model_main, Windows;
 
 type
   TMainController = class(TComponent)
-  const
-    DefaultFileExtension = '.bloodpressure';
-    DefaultFileFilter = 'Blood pressure Data|*.bloodpressure';
   private
-    function AskForSavingUnchangedData: TModalResult;
+    function MessageBoxAskForSavingUnchangedData: TModalResult;
+    function HasDataChangedAskAndHandleSaving: Boolean;
     procedure UpdateStatusBar;
   public
     constructor Create(AOwner: TComponent); override;
@@ -51,7 +49,7 @@ uses view_main;
 
 { TMainController }
 
-function TMainController.AskForSavingUnchangedData: TModalResult;
+function TMainController.MessageBoxAskForSavingUnchangedData: TModalResult;
 begin
   Result := FMX.Dialogs.MessageDlg('Do you want to save the changed data?',
                                    TMsgDlgType.mtConfirmation,
@@ -66,22 +64,9 @@ begin
     dmMain := TdmMain.Create(Application);
 end;
 
-procedure TMainController.FormCloseQuery(Sender: TObject;
-  var CanClose: Boolean);
-var
-  dialogresult: TModalResult;
+procedure TMainController.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
-  dmMain.EnsureDataIsPosted;
-
-  if HasDataChanged then
-  begin
-    dialogresult := AskForSavingUnchangedData;
-
-    if (dialogresult = mrYes) then
-      SaveDatabase
-    else if (dialogresult = mrCancel) then
-      CanClose := False;
-  end;
+  CanClose := HasDataChangedAskAndHandleSaving;
 end;
 
 procedure TMainController.FormShow(Sender: TObject);
@@ -91,91 +76,71 @@ end;
 
 function TMainController.HasDataChanged: Boolean;
 begin
-  Result := (dmMain.CDSBloodpressure.ChangeCount > 0);
+  Result := dmMain.DBController.HasDataChanged;
+end;
+
+function TMainController.HasDataChangedAskAndHandleSaving: Boolean;
+var
+  DialogResult: TModalResult;
+begin
+  dmMain.DBController.EnsureDataIsPosted;
+
+  // if data has changed, we have to handle the question if the user wants to save or not
+  if HasDataChanged then
+  begin
+    DialogResult := MessageBoxAskForSavingUnchangedData;
+
+    // if user wants to save, save and saving question is handled
+    if (DialogResult = mrYes) then
+    begin
+      SaveDatabase;
+      Result := True;
+    end
+    // if user don't want to save, don't save and saving question is handled
+    else if (DialogResult = mrNo) then
+      Result := True
+    // if user cancels, saving question is not handled
+    else if (DialogResult = mrCancel) then
+      Result := False;
+  end
+  // if data has not changed, saving question is handled (no saving needed)
+  else
+    Result := True;
 end;
 
 procedure TMainController.LoadDatabaseDialog;
-var
-  OpenDialog: TOpenDialog;
-  dialogresult: TModalResult;
 begin
-  dmMain.EnsureDataIsPosted;
-
-  if HasDataChanged then
+  if HasDataChangedAskAndHandleSaving then
   begin
-    dialogresult := AskForSavingUnchangedData;
-
-    if (dialogresult = mrYes) then
-      SaveDatabase
-    else if (dialogresult = mrCancel) then
-      Exit;
+    dmMain.DBController.ExecuteOpenDialog;
+    UpdateStatusBar;
   end;
-
-  OpenDialog := TOpenDialog.Create(Self);
-
-  try
-    OpenDialog.DefaultExt := DefaultFileExtension;
-    OpenDialog.Filter := DefaultFileFilter;
-
-    if OpenDialog.Execute then
-      if System.SysUtils.FileExists(OpenDialog.FileName) then
-        dmMain.LoadDatabaseFromFile(OpenDialog.FileName);
-  finally
-    OpenDialog.Free;
-  end;
-
-  UpdateStatusBar;
 end;
 
 procedure TMainController.NewDatabase;
 var
-  dialogresult: TModalResult;
+  DialogResult: TModalResult;
 begin
-  dmMain.EnsureDataIsPosted;
-
-  if HasDataChanged then
+  if HasDataChangedAskAndHandleSaving then
   begin
-    dialogresult := AskForSavingUnchangedData;
-
-    if (dialogresult = mrYes) then
-      SaveDatabase
-    else if (dialogresult = mrCancel) then
-      Exit;
+    dmMain.DBController.NewDatabase;
+    UpdateStatusBar;
   end;
-
-  dmMain.NewDatabase;
-  UpdateStatusBar;
 end;
 
 procedure TMainController.SaveDatabase;
 begin
-  if (dmMain.OpenDatabaseFilename = '') then
+  if (dmMain.DBController.OpenDatabaseFilename = '') then
     SaveDatabaseDialog
   else
-    dmMain.SaveDatabaseToFile();
+    dmMain.DBController.SaveDatabaseToFile();
 
   UpdateStatusBar;
 end;
 
 procedure TMainController.SaveDatabaseDialog;
-var
-  SaveDialog: TSaveDialog;
 begin
-  SaveDialog := TSaveDialog.Create(Self);
-
-  try
-    SaveDialog.DefaultExt := DefaultFileExtension;
-    SaveDialog.Filter := DefaultFileFilter;
-    SaveDialog.Options := SaveDialog.Options + [System.UITypes.TOpenOption.ofOverwritePrompt, System.UITypes.TOpenOption.ofExtensionDifferent];
-    SaveDialog.InitialDir := ExtractFilePath(dmMain.OpenDatabaseFilename);
-    SaveDialog.FileName := ExtractFileName(dmMain.OpenDatabaseFilename);
-
-    if SaveDialog.Execute then
-      dmMain.SaveDatabaseToFile(SaveDialog.FileName);
-  finally
-    SaveDialog.Free;
-  end;
-
+  dmMain.DBController.ExecuteSaveDialog;
   UpdateStatusBar;
 end;
 
@@ -199,7 +164,7 @@ end;
 
 procedure TMainController.UpdateStatusBar;
 begin
-  frmMain.lblStatusBar.Text := dmMain.OpenDatabaseFilename;
+  frmMain.lblStatusBar.Text := dmMain.DBController.OpenDatabaseFilename;
 end;
 
-end.                                                                                             x
+end.                                                                                       x
